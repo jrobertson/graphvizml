@@ -9,12 +9,22 @@ require 'graphviz'  # this loads the ruby-graphviz gem
 class GraphVizML
 
 
-  def initialize(filename)
+  def initialize(obj)
 
     @g = GraphViz::new( "structs", "type" => "graph" )
     @g[:rankdir] = "LR"
-    @filename = filename
-    @doc = Rexle.new(File.read filename)
+    
+    if obj.is_a? String then
+      
+      @filename = obj
+      @doc = Rexle.new(File.read @filename)
+      
+    elsif obj.is_a? Rexle
+      
+      @filename = 'gvml.xml'
+      @doc = obj
+
+    end
 
   end
 
@@ -23,7 +33,6 @@ class GraphVizML
     e_options = @doc.root.element 'options'
     e_nodes = @doc.root.element 'nodes'
     e_edges = @doc.root.element 'edges'
-
 
     # set global node options
 
@@ -46,6 +55,7 @@ class GraphVizML
     # add the edges
 
     e_edges.root.xpath('records/edge').each do |edge|
+
       a = edge.xpath('records/node')
       @g.add_edge(a[0].attribute('id').to_s, 
         a[1].attribute('id').to_s).label = edge.text('summary/label').to_s
