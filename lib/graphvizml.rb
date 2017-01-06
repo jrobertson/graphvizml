@@ -40,7 +40,7 @@ class GraphVizML
     # add the nodes
 
     e_nodes.root.xpath('records/node').each do |node|
-      @g.add_node(node.attribute('id').to_s).label = node.text('label') + '1'
+      @g.add_node(node.attribute('id').to_s).label = node.text('label')
     end
 
     # add the edges
