@@ -25,26 +25,43 @@ class GraphVizML
       @doc = obj
 
     end
+    
+    build()
 
   end
 
   def to_png(filename=@filename.sub(/\.xml$/,'.png'))
-
-    e_options = @doc.root.element 'options'
+    @g.output( png: filename )
+  end
+  
+  private
+  
+  def build
+    
+    stylesheet = @doc.root.element('style').text
     e_nodes = @doc.root.element 'nodes'
     e_edges = @doc.root.element 'edges'
 
-    # set global node options
+    # parse the stylesheet
 
-    xpath_node = "records/option[summary/type='node']/records/attribute"
-    e_options.root.xpath(xpath_node).each do |attribute|
-      @g.node[attribute.text('name').to_sym] = attribute.text('value')
-    end
+    a = stylesheet.split(/}/)[0..-2].map do |entry|
 
-    xpath_edge = "records/option[summary/type='edge']/records/attribute"
-    e_options.root.xpath(xpath_edge).each do |attribute|
-      @g.edge[attribute.text('name').to_sym] = attribute.text('value')
-    end
+      raw_selector,raw_styles = entry.split(/{/,2)
+
+      h = raw_styles.strip.split(/;/).inject({}) do |r, x| 
+        k, v = x.split(/:/,2).map(&:strip)
+        r.merge(k.to_sym => v)
+      end
+
+      [raw_selector.split(/,\s*/).map(&:strip), h]
+    end      
+    
+    node_style = a.detect {|x| x.assoc 'node'}
+    node_style.last.each {|key, value|  @g.node[key] = value } if node_style
+    
+    edge_style = a.detect {|x| x.assoc 'edge'}
+    edge_style.last.each {|key, value| @g.edge[key] = value } if edge_style
+
 
     # add the nodes
 
@@ -59,13 +76,7 @@ class GraphVizML
       a = edge.xpath('records/node')
       @g.add_edge(a[0].attribute('id').to_s, 
         a[1].attribute('id').to_s).label = edge.text('summary/label').to_s
-    end
-
-    # output the file
-
-    out_type = e_edges.root.text('summary/output_type')
-    out_file = e_edges.root.text('summary/output_file')
-    @g.output( png: filename )
+    end    
   end
 
 end
