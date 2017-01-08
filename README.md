@@ -135,7 +135,7 @@ Input file: gvml.xml
 
 Output:
 
-![screenshot of the output](http://www.jamesrobertson.eu/twitxr/168496.jpg)
+![screenshot of the output](http://www.jamesrobertson.eu/r/images/2017/jan/06/graphviz-example.png)
 
 ## Resources
 
