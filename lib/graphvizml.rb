@@ -34,6 +34,10 @@ class GraphVizML
     @g.output( png: filename )
   end
   
+  def to_svg(filename=@filename.sub(/\.xml$/,'.svg'))
+    @g.output( svg: filename )
+  end  
+  
   private
   
   def build
