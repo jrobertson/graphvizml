@@ -4,38 +4,48 @@
 
 
 require 'rexle'
-require 'graphviz'  # this loads the ruby-graphviz gem
+require 'graphviz'
+
 
 class GraphVizML
 
+  attr_reader :g
 
   def initialize(obj)
-
-    @g = GraphViz::new( "structs", "type" => "graph" )
-    @g[:rankdir] = "LR"
     
-    if obj.is_a? String then
-      
-      @filename = obj
-      @doc = Rexle.new(File.read @filename)
+    @doc = if obj.is_a? String then
+            
+      Rexle.new(File.read @filename=obj)
       
     elsif obj.is_a? Rexle
       
       @filename = 'gvml.xml'
-      @doc = obj
+      obj
 
     end
+    
+    h = @doc.root.attributes
+
+    type = h.has_key?(:type) ? h[:type].to_sym : :graph
+    direction = h.has_key?(:direction) ? h[:direction].to_s.upcase : 'LR'
+    
+    @g = GraphViz::new( :G, type: type)
+    @g[:rankdir] = direction
     
     build()
 
   end
 
+  # writes to a PNG file (not a PNG blob)
+  #
   def to_png(filename=@filename.sub(/\.xml$/,'.png'))
-    @g.output( png: filename )
+    @g.output( :png => filename )
   end
   
+  # writes to a SVG file (not an SVG blob)
+  #
   def to_svg(filename=@filename.sub(/\.xml$/,'.svg'))
-    @g.output( svg: filename )
+    @g.output( :svg => filename )
   end  
   
   private
@@ -70,7 +80,11 @@ class GraphVizML
     # add the nodes
 
     e_nodes.root.xpath('records/node').each do |node|
-      @g.add_node(node.attribute('id').to_s).label = node.text('label')
+
+      id = node.attribute('id').to_s
+      label = node.text('label')
+      #puts "adding node id: %s label: %s" % [id, label]
+      @g.add_node(id).label = label
     end
 
     # add the edges
@@ -78,9 +92,13 @@ class GraphVizML
     e_edges.root.xpath('records/edge').each do |edge|
 
       a = edge.xpath('records/node')
-      @g.add_edge(a[0].attribute('id').to_s, 
-        a[1].attribute('id').to_s).label = edge.text('summary/label').to_s
+      id1, id2 = a[0].attribute('id').to_s, a[1].attribute('id').to_s
+      label = edge.text('summary/label').to_s
+      #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
+      @g.add_edge(id1, id2).label = label
     end    
+    
+    :build
   end
 
 end
