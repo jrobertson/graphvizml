@@ -52,7 +52,10 @@ class GraphVizML
   
   def build
     
-    stylesheet = @doc.root.element('style').text
+    style = @doc.root.element('style')
+    
+    stylesheet = style ? style.text : default_stylesheet()
+
     e_nodes = @doc.root.element 'nodes'
     e_edges = @doc.root.element 'edges'
 
@@ -81,10 +84,14 @@ class GraphVizML
 
     e_nodes.root.xpath('records/node').each do |node|
 
-      id = node.attribute('id').to_s
+      h =node.attributes
+      id = h[:id]
       label = node.text('label')
+      
+      # shape options:  box, ellipse, record, diamond, circle, polygon, point
+      shape = h.has_key?(:shape) ? h[:shape] : :box
       #puts "adding node id: %s label: %s" % [id, label]
-      @g.add_node(id).label = label
+      @g.add_node(id, shape: shape).label = label
     end
 
     # add the edges
@@ -99,6 +106,36 @@ class GraphVizML
     end    
     
     :build
+  end
+  
+  private
+  
+  def default_stylesheet()
+
+<<STYLE
+  node { 
+    color: #ddaa66; 
+    fillcolor: #ffeeee;
+    fontcolor: #113377; 
+    fontname: Trebuchet MS; 
+    fontsize: 9; 
+    margin: 0.1;
+    penwidth: 1.3; 
+    shape: box; 
+    style: filled;
+  }
+
+  edge {
+    arrowsize: 0.9;
+    color: #999999; 
+    fontcolor: #444444; 
+    fontname: Verdana; 
+    fontsize: 9; 
+    dir: forward;
+    weight: 1;
+  }    
+  
+STYLE
   end
 
 end
