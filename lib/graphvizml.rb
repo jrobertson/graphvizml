@@ -26,10 +26,10 @@ class GraphVizML
     
     h = @doc.root.attributes
 
-    type = h.has_key?(:type) ? h[:type].to_sym : :graph
+    @type = h.has_key?(:type) ? h[:type].to_sym : :digraph
     direction = h.has_key?(:direction) ? h[:direction].to_s.upcase : 'LR'
     
-    @g = GraphViz::new( :G, type: type)
+    @g = GraphViz::new( :G, type: @type)
     @g[:rankdir] = direction
     
     build()
@@ -99,6 +99,7 @@ class GraphVizML
     e_edges.root.xpath('records/edge').each do |edge|
 
       a = edge.xpath('records/node')
+
       id1, id2 = a[0].attribute('id').to_s, a[1].attribute('id').to_s
       label = edge.text('summary/label').to_s
       #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
@@ -131,7 +132,7 @@ class GraphVizML
     fontcolor: #444444; 
     fontname: Verdana; 
     fontsize: 9; 
-    dir: forward;
+    #{@type == :digraph ? 'dir: forward;' : ''}
     weight: 1;
   }    
   
