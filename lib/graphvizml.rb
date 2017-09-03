@@ -34,6 +34,10 @@ class GraphVizML
     build()
 
   end
+  
+  def to_dot()
+    @g.to_dot
+  end
 
   # writes to a PNG file (not a PNG blob)
   #
@@ -87,7 +91,6 @@ class GraphVizML
       
     end 
     
-    #puts @g.to_dot    
     
     # add the styling once the objects have been created
     
@@ -110,26 +113,23 @@ class GraphVizML
       [raw_selector.split(/,\s*/).map(&:strip), h]
     end      
     
-    node_style = a.detect {|x| x.assoc 'node'}
-    
-    if node_style then
+    node_style = a.detect {|x| x.assoc 'node'}    
       
-      nodes.each do |id, x|
-        node_style.last.each {|key, value| x.last.attributes[key] = value }
-      end      
-    end
+    nodes.each do |id, x|
+      
+      _, attributes, obj = x
+      attributes.each {|key, value| obj.attributes[key] = value }
+      node_style.last.each {|key, value| obj.attributes[key] = value } if node_style       
+                                                      
+    end      
     
     edge_style = a.detect {|x| x.assoc 'edge'}
     
-    if edge_style then
-
-      nodes.each do |id,x|      
-        x.last.connections.each do |conn|
-          edge_style.last.each {|key, value| conn.attributes[key] = value }
-        end
-      end      
-    end
-
+    nodes.each do |id,x|      
+      x.last.connections.each do |conn|
+        edge_style.last.each {|key, value| conn.attributes[key] = value } if edge_style
+      end
+    end      
     
     :build
   end
