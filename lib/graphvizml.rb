@@ -26,11 +26,10 @@ class GraphVizML
     
     h = @doc.root.attributes
 
-    @type = h.has_key?(:type) ? h[:type].to_sym : :digraph
+    @type = (h.has_key?(:type) ? h[:type].to_sym : :digraph)
     direction = h.has_key?(:direction) ? h[:direction].to_s.upcase : 'LR'
     
-    @g = GraphViz::new( :G, type: @type)
-    @g[:rankdir] = direction
+    @g = Graphviz::Graph.new type: @type.to_s, rankdir: direction
     
     build()
 
@@ -39,26 +38,64 @@ class GraphVizML
   # writes to a PNG file (not a PNG blob)
   #
   def to_png(filename=@filename.sub(/\.xml$/,'.png'))
-    @g.output( :png => filename )
+    Graphviz::output(@g, :path => filename)
   end
   
   # writes to a SVG file (not an SVG blob)
   #
   def to_svg(filename=@filename.sub(/\.xml$/,'.svg'))
-    @g.output( :svg => filename )
+    Graphviz::output(@g, :path => filename)
   end  
   
   private
   
   def build
     
-    style = @doc.root.element('style')
-    
-    stylesheet = style ? style.text : default_stylesheet()
-
     e_nodes = @doc.root.element 'nodes'
     e_edges = @doc.root.element 'edges'
 
+    # add the nodes
+    
+    nodes = {}
+
+    nodes = e_nodes.root.xpath('records/node').inject({}) do |r,node|
+
+      h =node.attributes
+      id = h[:id]
+      label = node.text('label')
+      
+      # shape options:  box, ellipse, record, diamond, circle, polygon, point
+      shape = h.has_key?(:shape) ? h[:shape] : :box
+      #puts "adding node id: %s label: %s" % [id, label]
+      r.merge(id => [label, {shape: shape}, nil])
+    end
+
+    
+    # add the edges    
+
+    id_1 = e_edges.root.element('records/edge/records/node/attribute::id').to_s
+    nodes[id_1][-1] = @g.add_node(nodes[id_1][0])
+
+
+    e_edges.root.xpath('records/edge').each do |edge|
+
+      id1, id2 = edge.xpath('records/node/attribute::id').map(&:to_s)
+
+      label = edge.text('summary/label').to_s
+      #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
+      nodes[id2][-1] ||= nodes[id1].last.add_node(nodes[id2][0])
+      
+    end 
+    
+    #puts @g.to_dot    
+    
+    # add the styling once the objects have been created
+    
+    style = @doc.root.element('style')
+    
+    stylesheet = style ? style.text : default_stylesheet()
+    
+    
     # parse the stylesheet
 
     a = stylesheet.split(/}/)[0..-2].map do |entry|
@@ -74,37 +111,25 @@ class GraphVizML
     end      
     
     node_style = a.detect {|x| x.assoc 'node'}
-    node_style.last.each {|key, value|  @g.node[key] = value } if node_style
+    
+    if node_style then
+      
+      nodes.each do |id, x|
+        node_style.last.each {|key, value| x.last.attributes[key] = value }
+      end      
+    end
     
     edge_style = a.detect {|x| x.assoc 'edge'}
-    edge_style.last.each {|key, value| @g.edge[key] = value } if edge_style
+    
+    if edge_style then
 
-
-    # add the nodes
-
-    e_nodes.root.xpath('records/node').each do |node|
-
-      h =node.attributes
-      id = h[:id]
-      label = node.text('label')
-      
-      # shape options:  box, ellipse, record, diamond, circle, polygon, point
-      shape = h.has_key?(:shape) ? h[:shape] : :box
-      #puts "adding node id: %s label: %s" % [id, label]
-      @g.add_node(id, shape: shape).label = label
+      nodes.each do |id,x|      
+        x.last.connections.each do |conn|
+          edge_style.last.each {|key, value| conn.attributes[key] = value }
+        end
+      end      
     end
 
-    # add the edges
-
-    e_edges.root.xpath('records/edge').each do |edge|
-
-      a = edge.xpath('records/node')
-
-      id1, id2 = a[0].attribute('id').to_s, a[1].attribute('id').to_s
-      label = edge.text('summary/label').to_s
-      #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
-      @g.add_edge(id1, id2).label = label
-    end    
     
     :build
   end
