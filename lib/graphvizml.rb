@@ -26,10 +26,13 @@ class GraphVizML
     
     h = @doc.root.attributes
 
-    @type = (h.has_key?(:type) ? h[:type].to_sym : :digraph)
-    direction = h.has_key?(:direction) ? h[:direction].to_s.upcase : 'LR'
+    @type = (h.has_key?(:type) ? h[:type].to_sym : :digraph)    
+
+    h[:type] = @type.to_s
+    h[:rankdir] = h.has_key?(:direction) ? h[:direction].to_s.upcase : 'LR'
+    %i(recordx_type format_mask schema direction).each {|x| h.delete x}    
     
-    @g = Graphviz::Graph.new type: @type.to_s, rankdir: direction
+    @g = Graphviz::Graph.new h
     
     build()
 

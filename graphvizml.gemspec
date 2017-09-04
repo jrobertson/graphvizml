@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'graphvizml'
-  s.version = '0.4.2'
+  s.version = '0.4.3'
   s.summary = 'Generates an SVG file or PNG file from GraphViz using a GraphViz Markup Language file'
   s.authors = ['James Robertson']
   s.files = Dir['lib/graphvizml.rb']
