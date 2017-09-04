@@ -30,8 +30,15 @@ class GraphVizML
 
     h[:type] = @type.to_s
     h[:rankdir] = h.has_key?(:direction) ? h[:direction].to_s.upcase : 'LR'
-    %i(recordx_type format_mask schema direction).each {|x| h.delete x}    
     
+    %i(recordx_type format_mask schema direction).each do |x| 
+      h.delete x; h.delete x.to_s
+    end
+    
+    # remove any entries with an empty value
+    h.each {|key, value| h.delete key if value.empty?}
+    
+    puts 'h: ' + h.inspect
     @g = Graphviz::Graph.new h
     
     build()
@@ -117,7 +124,7 @@ class GraphVizML
     end      
     
     node_style = a.detect {|x| x.assoc 'node'}    
-      
+    
     nodes.each do |id, x|
       
       _, attributes, obj = x
