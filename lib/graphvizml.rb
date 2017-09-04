@@ -88,7 +88,7 @@ class GraphVizML
       label = edge.text('summary/label').to_s
       #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
       nodes[id2][-1] ||= nodes[id1].last.add_node(nodes[id2][0])
-      
+      nodes[id1][-1].connections.last.attributes[:label] = label
     end 
     
     
