@@ -38,7 +38,6 @@ class GraphVizML
     # remove any entries with an empty value
     h.each {|key, value| h.delete key if value.empty?}
     
-    puts 'h: ' + h.inspect
     @g = Graphviz::Graph.new h
     
     build()
@@ -75,7 +74,7 @@ class GraphVizML
     nodes = e_nodes.root.xpath('records/node').inject({}) do |r,node|
 
       h =node.attributes
-      id = h[:id]
+      id = h[:gid]
       label = node.text('label')
       
       # shape options:  box, ellipse, record, diamond, circle, polygon, point
@@ -87,13 +86,13 @@ class GraphVizML
     
     # add the edges    
 
-    id_1 = e_edges.root.element('records/edge/records/node/attribute::id').to_s
+    id_1 = e_edges.root.element('records/edge/records/node/attribute::gid').to_s
     nodes[id_1][-1] = @g.add_node(nodes[id_1][0])
 
 
     e_edges.root.xpath('records/edge').each do |edge|
 
-      id1, id2 = edge.xpath('records/node/attribute::id').map(&:to_s)
+      id1, id2 = edge.xpath('records/node/attribute::gid').map(&:to_s)
 
       label = edge.text('summary/label').to_s
       #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
