@@ -17,7 +17,7 @@ class GraphVizML
             
       Domle.new(File.read @filename=obj)
       
-    elsif obj.is_a? Rexle
+    elsif obj.is_a? Domle
       
       @filename = 'gvml.xml'
       obj
@@ -67,20 +67,25 @@ class GraphVizML
     e_nodes = @doc.root.element 'nodes'
     e_edges = @doc.root.element 'edges'
 
-    # add the nodes
     
-    nodes = {}
+    # add the nodes    
 
     nodes = e_nodes.root.xpath('records/node').inject({}) do |r,node|
 
-      h =node.attributes
+      h = node.attributes
       id = h[:gid]
       label = node.text('label')
       
       # shape options:  box, ellipse, record, diamond, circle, polygon, point
-      shape = h.has_key?(:shape) ? h[:shape] : :box
+      
+      style = {}
+      style[:shape] = h[:shape] || 'box'
+      style[:URL] = h[:url] if h[:url]
+      
       #puts "adding node id: %s label: %s" % [id, label]
-      r.merge(id => [label, node.style.merge({shape: shape}), nil])
+      
+      # the nil is replaced by the Graphviz node object 
+      r.merge(id => [label, node.style.merge(style), nil]) 
 
     end
 
@@ -98,20 +103,30 @@ class GraphVizML
       #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
       nodes[id2][-1] ||= nodes[id1].last.add_node(nodes[id2][0])
       attributes = edge.style.merge({label: label})
+      
       conn = nodes[id1][-1].connections.last
       conn.attributes[:label] = label
-      edge.style.each {|key,val| conn.attributes[key] = val }
+      edge.style.each {|key,val| conn.attributes[key] = m(val) }
       
     end         
      
     nodes.each do |id, x|
       
       _, attributes, obj = x
-      attributes.each {|key, value| obj.attributes[key] = value }    
+      attributes.each {|key, val| obj.attributes[key] = m(val) }
                                                       
     end      
 
     :build
+  end
+  
+  # modify the value if it matches the following criteria
+  #
+  def m(s)
+    
+    # is it a shorthand hexcode? e.g. #fff
+    s.gsub(/^#([\da-f]{3})$/)\
+        { '#' + ($1).chars.inject([]) {|r,x| r << x + x}.join}
   end
   
 end
