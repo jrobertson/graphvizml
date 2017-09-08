@@ -63,16 +63,28 @@ class GraphVizML
   private
   
   def build
-    
+
     e_nodes = @doc.root.element 'nodes'
     e_edges = @doc.root.element 'edges'
 
-    
+
     # add the nodes    
 
-    nodes = e_nodes.root.xpath('records/node').inject({}) do |r,node|
-
+    nodes = e_nodes.root.xpath('records/a | records/node').inject({}) do |r,e|
+      
+      node = if e.name == 'a' then
+                      
+        url = e.attributes[:href]
+        child = e.element 'node'
+        child.attributes[:url] = url
+        
+        child
+      else
+        e
+      end
+      
       h = node.attributes
+
       id = h[:gid]
       label = node.text('label')
       
@@ -97,7 +109,7 @@ class GraphVizML
 
     e_edges.root.xpath('records/edge').each do |edge|
 
-      id1, id2 = edge.xpath('records/node/attribute::gid').map(&:to_s)
+      id1, id2 = edge.xpath('records//node/attribute::gid').map(&:to_s)
 
       label = edge.text('summary/label').to_s
       #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
