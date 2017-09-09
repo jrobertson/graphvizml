@@ -5,6 +5,7 @@
 
 require 'domle'
 require 'graphviz'
+require 'tempfile'
 
 
 class GraphVizML
@@ -48,17 +49,25 @@ class GraphVizML
     @g.to_dot
   end
 
-  # writes to a PNG file (not a PNG blob)
+  # returns a PNG blob
   #
-  def to_png(filename=@filename.sub(/\.xml$/,'.png'))
-    Graphviz::output(@g, :path => filename)
+  def to_png()
+    f = Tempfile.new('graphvizml')
+    Graphviz::output(@g, output_format: 'png', path: f.path)
+    File.read f.path
   end
   
-  # writes to a SVG file (not an SVG blob)
+  # returns an SVG blob
   #
-  def to_svg(filename=@filename.sub(/\.xml$/,'.svg'))
+  def to_svg()
+    f = Tempfile.new('graphvizml')
+    Graphviz::output(@g, format: 'svg', path: f.path)
+    File.read f.path
+  end
+
+  def write(filename)
     Graphviz::output(@g, :path => filename)
-  end  
+  end
   
   private
   
