@@ -105,38 +105,56 @@ class GraphVizML
   
   def build_from_nodes(doc)    
 
-    
     g = Graphviz::Graph.new format_summary_attributes(doc.root.attributes) 
     
-
     # add the nodes    
 
-    nodes = doc.root.xpath('//a | //node').inject({}) do |r,e|
+    nodes = doc.root.xpath('//node').inject({}) do |r,e|
       
       r.merge fetch_node(e)
 
-    end    
+    end
+
+    a = doc.root.element('style/text()').strip.split(/}/).map do |entry|
+
+      raw_selector,raw_styles = entry.split(/{/,2)
+
+      h = raw_styles.strip.split(/;/).inject({}) do |r, x| 
+        k, v = x.split(/:/,2).map(&:strip)
+        r.merge(k.to_sym => v)
+      end
+
+      [raw_selector.split(/,\s*/).map(&:strip), h]
+    end
+    
+    edge_style = a.find {|x| x[0].grep(/edge/).any?}.last
+
+    
     
     # add the edges    
 
     id_1 = nodes.first[0]
     nodes[id_1][-1] = g.add_node(nodes[id_1][0])    
-    
+
 
     doc.root.each_recursive do |node|
-      
-      node.xpath('node').each do |child|                
+
+      next unless node.name == 'node'
+
+      node.xpath('a | node').each do |childx|
         
+        child = childx.name == 'node' ? childx : childx.element('node')
         id1, id2 = node.object_id, child.object_id
 
         label = child.attributes[:connection].to_s
-        #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
+
         nodes[id2][-1] ||= nodes[id1].last.add_node(nodes[id2][0])
         attributes = child.style.merge({label: label})
-        
+
         conn = nodes[id1][-1].connections.last
         conn.attributes[:label] = label
-        child.style.each {|key,val| conn.attributes[key] = m(val) }    
+        
+        edge_style.each {|key,val| conn.attributes[key] = m(val) }    
               
       end
     end    
@@ -147,20 +165,16 @@ class GraphVizML
     
   end
   
-  def fetch_node(e)
-    
-    node = if e.name == 'a' then
-                    
-      url = e.attributes[:href]
-      child = e.element 'node'
-      child.attributes[:url] = url
-      
-      child
-    else
-      e
-    end
-    
+  def fetch_node(node)
+
     h = node.attributes
+    
+    if node.parent.name == 'a' then
+                    
+      url = node.parent.attributes[:href]
+      h[:url] = url if url
+      
+    end    
 
     id = h[:gid] || node.object_id
     label = node.text('label')
@@ -181,8 +195,9 @@ class GraphVizML
   def format_attributes(nodes)
     
     nodes.each do |id, x|
-      
+
       _, attributes, obj = x
+      next unless obj
       attributes.each {|key, val| obj.attributes[key] = m(val) }
                                                       
     end    
