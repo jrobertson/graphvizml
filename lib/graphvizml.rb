@@ -182,9 +182,10 @@ class GraphVizML
     # shape options:  box, ellipse, record, diamond, circle, polygon, point
     
     style = {}
-    style[:shape] = h[:shape] || 'box'
+
+    style[:shape] = h[:shape] unless h[:shape].empty?
     style[:URL] = h[:url] if h[:url]
-    
+
     #puts "adding node id: %s label: %s" % [id, label]
     
     # the nil is replaced by the Graphviz node object 
