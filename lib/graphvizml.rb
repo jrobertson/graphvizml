@@ -22,16 +22,9 @@ class GraphVizML
       
       obj.xml
 
-    end    
-    
-    doc = Domle.new(xml)    
-
-    # check if the root node is gvml or nodes
-    @g = if doc.root.name == 'gvml' then
-      build_from_gvml doc
-    elsif doc.root.name == 'nodes'
-      build_from_nodes doc
     end
+
+    @g = build_from_nodes Domle.new(xml)
 
   end
   
@@ -61,47 +54,6 @@ class GraphVizML
   
   private
   
-  def build_from_gvml(doc)
-        
-    g = Graphviz::Graph.new format_summary_attributes(doc.root.attributes) 
-
-    e_nodes = doc.root.element 'nodes'
-    e_edges = doc.root.element 'edges'
-
-
-    # add the nodes    
-
-    nodes = e_nodes.root.xpath('records/a | records/node').inject({}) do |r,e|
-      
-      r.merge fetch_node(e)
-
-    end
-
-    
-    # add the edges    
-
-    id_1 = e_edges.root.element('records/edge/records/node/attribute::gid').to_s
-    nodes[id_1][-1] = g.add_node(nodes[id_1][0])
-
-    e_edges.root.xpath('records/edge').each do |edge|
-
-      id1, id2 = edge.xpath('records//node/attribute::gid').map(&:to_s)
-
-      label = edge.text('summary/label').to_s
-      #puts "adding edge id1: %s id2: %s label: %s" % [id1, id2, label]
-      nodes[id2][-1] ||= nodes[id1].last.add_node(nodes[id2][0])
-      attributes = edge.style.merge({label: label})
-      
-      conn = nodes[id1][-1].connections.last
-      conn.attributes[:label] = label
-      edge.style.each {|key,val| conn.attributes[key] = m(val) }
-      
-    end         
-     
-    format_attributes nodes
-
-    return g
-  end
   
   def build_from_nodes(doc)    
 
@@ -128,7 +80,6 @@ class GraphVizML
     end
     
     edge_style = a.find {|x| x[0].grep(/edge/).any?}.last
-
     
     
     # add the edges    
