@@ -96,7 +96,8 @@ class GraphVizML
     f = Tempfile.new('graphvizml')
     Graphviz::output(@g, format: 'svg', path: f.path)
     s = File.read f.path
-    s.sub!('xmlns:xlink="http://www.w3.org/1999/xlink"','')
+    #s.sub!('xmlns:xlink="http://www.w3.org/1999/xlink"','')
+    #s.sub!('xlink:','') # not yet implemented because of a local namespace issue
     s.lines.insert(8, css_code()).join    
   end
 
