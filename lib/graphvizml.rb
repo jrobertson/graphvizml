@@ -35,23 +35,34 @@ class GraphVizML
     @fill, @stroke, @text_color = fill, stroke, text_color
     
     if obj then
+    
+            
+      xml = if obj.is_a? Rexle or obj.is_a? Rexle::Element
       
-      s = RXFHelper.read(obj).first
+        obj.xml
       
-      if s =~ /<\?graphvizml\b/ then
+      else 
         
-        import_string s        
-        
-      else
+        s = RXFHelper.read(obj).first
       
-        if @debug then
-          #File.write '/tmp/graphviz.xml', xml
-          puts('graphvizml xml: ' + s.inspect) 
+        if  s =~ /<\?graphvizml\b/ then
+          
+          import_string s        
+          
+        else
+        
+          if @debug then
+            #File.write '/tmp/graphviz.xml', xml
+            puts('graphvizml xml: ' + s.inspect) 
+          end        
+          
+          s
+        
         end
         
-        @g = build_from_nodes Domle.new(s)
-      
       end
+      
+      @g = build_from_nodes Domle.new(xml)
       
     end
     
@@ -67,7 +78,9 @@ class GraphVizML
   def import(obj)
     
     s = RXFHelper.read(obj).first
-    import_string s
+    xml = import_string s
+    @g = build_from_nodes Domle.new(xml)
+    self
     
   end
 
@@ -265,8 +278,6 @@ EOF
     end 
     
     xml = LineTree.new(s, root: 'nodes', debug: true).to_xml
-    @g = build_from_nodes Domle.new(xml)
-    self
     
   end
   
