@@ -5,57 +5,95 @@
 
 require 'domle'
 require 'graphviz'
+require 'line-tree'
 require 'tempfile'
 
 
-class GraphVizML
+module RegGem
 
+  def self.register()
+'
+hkey_gems
+  doctype
+    graphvizml
+      require graphvizml
+      class GraphVizML
+      media_type svg
+'      
+  end
+end
+
+class GraphVizML
+  using ColouredText
+
+  attr_accessor :css, :stroke, :fill, :text_color
   attr_reader :g
 
-  def initialize(obj)
+  def initialize(obj=nil, debug: false, fill: 'transparent', stroke: '#000', text_color: '#000')
     
-    xml = if obj.is_a? String then
-            
-      File.read filename=obj
+    @debug = debug
+    @fill, @stroke, @text_color = fill, stroke, text_color
+    
+    if obj then
       
-    elsif obj.is_a? Rexle or obj.is_a? Rexle::Element
+      s = RXFHelper.read(obj).first
       
-      obj.xml
-
+      if s =~ /<\?graphvizml\b/ then
+        
+        import_string s        
+        
+      else
+      
+        if @debug then
+          #File.write '/tmp/graphviz.xml', xml
+          puts('graphvizml xml: ' + s.inspect) 
+        end
+        
+        @g = build_from_nodes Domle.new(s)
+      
+      end
+      
     end
-
-    @g = build_from_nodes Domle.new(xml)
+    
+    @css = "
+      .node ellipse {stroke: #{stroke}; fill: #{fill}}
+      .node text {fill: #{text_color}}
+      .edge path {stroke: #{stroke}}
+      .edge polygon {stroke: #{stroke}; fill: #{stroke}}
+    "
 
   end
+  
+  def import(obj)
+    
+    s = RXFHelper.read(obj).first
+    import_string s
+    
+  end
+
   
   def to_dot()
     @g.to_dot
   end
 
-  # returns a PNG blob
-  #
-  def to_png()
-    f = Tempfile.new('graphvizml')
-    Graphviz::output(@g, output_format: 'png', path: f.path)
-    File.read f.path
-  end
   
   # returns an SVG blob
   #
   def to_svg()
     f = Tempfile.new('graphvizml')
     Graphviz::output(@g, format: 'svg', path: f.path)
-    File.read f.path
+    s = File.read f.path
+    s.sub!('xmlns:xlink="http://www.w3.org/1999/xlink"','')
+    s.lines.insert(8, css_code()).join    
   end
 
-  def write(filename)
-    Graphviz::output(@g, :path => filename)
-  end
   
   private
   
   
-  def build_from_nodes(doc)    
+  def build_from_nodes(doc)
+
+    puts 'inside build_from_nodes'.info if @debug
 
     g = Graphviz::Graph.new format_summary_attributes(doc.root.attributes) 
     
@@ -66,8 +104,15 @@ class GraphVizML
       r.merge fetch_node(e)
 
     end
+    
+    if @debug then
+      puts 'nodes: ' + nodes.inspect 
+      puts 'doc: ' + doc.root.xml.inspect
+    end
 
-    a = doc.root.element('style/text()').strip.split(/}/).map do |entry|
+    a = doc.root.element('style/text()').to_s.strip.split(/}/).map do |entry|
+      
+      puts 'entry: ' + entry.inspect if @debug
 
       raw_selector,raw_styles = entry.split(/{/,2)
 
@@ -79,7 +124,11 @@ class GraphVizML
       [raw_selector.split(/,\s*/).map(&:strip), h]
     end
     
-    edge_style = a.find {|x| x[0].grep(/edge/).any?}.last
+    puts ' a: ' + a.inspect if @debug
+    
+
+    edge_style = a.any? ? a.find {|x| x[0].grep(/edge/).any?}.last : []
+
     
     
     # add the edges    
@@ -92,13 +141,13 @@ class GraphVizML
 
       next unless node.name == 'node'
 
-      node.xpath('a | node').each do |childx|
+      node.xpath('a/node | node').each do |child|
         
-        child = childx.name == 'node' ? childx : childx.element('node')
         id1, id2 = node.object_id, child.object_id
 
         label = child.attributes[:connection].to_s
-
+        puts('nodes[id1]: ' + nodes[id1].inspect) if @debug
+        puts('nodes[id1].last: ' + nodes[id1].last.inspect) if @debug
         nodes[id2][-1] ||= nodes[id1].last.add_node(nodes[id2][0])
         attributes = child.style.merge({label: label})
 
@@ -116,9 +165,24 @@ class GraphVizML
     
   end
   
+  def css_code()
+<<EOF    
+	<defs>
+		<style type='text/css'><![CDATA[
+      #{@css}
+		]]></style>
+	</defs>    
+	
+EOF
+  end  
+  
   def fetch_node(node)
 
+    puts 'inside fetch_node'.info if @debug
+    
     h = node.attributes
+    #puts 'h: ' + h.inspect
+    puts('graphvizml/fetch_node h: ' + h.inspect) if @debug
     
     if node.parent.name == 'a' then
                     
@@ -134,7 +198,7 @@ class GraphVizML
     
     style = {}
 
-    style[:shape] = h[:shape] unless h[:shape].empty?
+    style[:shape] = h[:shape] if h[:shape] and !h[:shape].empty?
     style[:URL] = h[:url] if h[:url]
 
     #puts "adding node id: %s label: %s" % [id, label]
@@ -171,6 +235,39 @@ class GraphVizML
     h.each {|key, value| h.delete key if value.empty?}    
     
     h
+  end
+  
+  
+  def import_string(obj)
+    
+    s = RXFHelper.read(obj).first
+    
+    s2 = s.slice(/<\?graphvizml\b[^>]*\?>/)
+
+    if s2 then
+      
+      attributes = %w(id fill stroke text_color).inject({}) do |r, keyword|
+        found = s2[/(?<=#{keyword}=['"])[^'"]+/]
+        found ? r.merge(keyword.to_sym => found) : r
+      end
+      
+    fill, stroke, text_color = %i(fill stroke text_color).map do |x|
+      attributes[x] ? attributes[x] : method(x).call
+    end
+    
+    @css = "
+      .node ellipse {stroke: #{stroke}; fill: #{fill}}
+      .node text {fill: #{text_color}}
+      .edge path {stroke: #{stroke}}
+      .edge polygon {stroke: #{stroke}; fill: #{stroke}}
+    "      
+      
+    end 
+    
+    xml = LineTree.new(s, root: 'nodes', debug: true).to_xml
+    @g = build_from_nodes Domle.new(xml)
+    self
+    
   end
   
   # modify the value if it matches the following criteria
