@@ -79,6 +79,7 @@ class GraphVizML
     
     s = RXFHelper.read(obj).first
     xml = import_string s
+    puts('graphvizml/import xml: ' + xml.inspect).debug if @debug
     @g = build_from_nodes Domle.new(xml)
     self
     
@@ -252,11 +253,10 @@ EOF
   end
   
   
-  def import_string(obj)
+  def import_string(s)
+  
     
-    s = RXFHelper.read(obj).first
-    
-    s2 = s.slice(/<\?graphvizml\b[^>]*\?>/)
+    s2 = s.slice!(/<\?graphvizml\b[^>]*\?>/)
 
     if s2 then
       
@@ -278,7 +278,7 @@ EOF
       
     end 
     
-    xml = LineTree.new(s, root: 'nodes', debug: true).to_xml
+    xml = LineTree.new(s, root: 'nodes', debug: @debug).to_xml
     
   end
   
