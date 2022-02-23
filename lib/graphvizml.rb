@@ -7,6 +7,7 @@ require 'domle'
 require 'graphviz'
 require 'line-tree'
 require 'tempfile'
+require 'rxfreader'
 
 
 module RegGem
@@ -77,7 +78,7 @@ class GraphVizML
 
   def import(obj)
 
-    s = RXFHelper.read(obj).first
+    s = RXFReader.read(obj).first
     xml = import_string s
     puts('graphvizml/import xml: ' + xml.inspect).debug if @debug
     @g = build_from_nodes Domle.new(xml)
